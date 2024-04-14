@@ -1,57 +1,85 @@
 import streamlit as st
-import pandas as pd
-from sklearn import datasets
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, classification_report
+import numpy as np
 
-def load_data():
-    iris = datasets.load_iris()
-    df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
-    df['target'] = iris.target
-    return df, iris.target_names
+class Node:
+    def __init__(self, attribute=None, threshold=None, left=None, right=None, value=None):
+        self.attribute = attribute
+        self.threshold = threshold
+        self.left = left
+        self.right = right
+        self.value = value
 
-def train_model(df):
-    X = df.drop(columns=['target'])
-    y = df['target']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = DecisionTreeClassifier()
-    model.fit(X_train, y_train)
-    return model, X_test, y_test
+def entropy(y):
+    _, counts = np.unique(y, return_counts=True)
+    probabilities = counts / len(y)
+    return -np.sum(probabilities * np.log2(probabilities))
+
+def information_gain(X, y, attribute, threshold):
+    left_indices = X[:, attribute] < threshold
+    left_y = y[left_indices]
+    right_y = y[~left_indices]
+    p_left = len(left_y) / len(y)
+    p_right = len(right_y) / len(y)
+    return entropy(y) - p_left * entropy(left_y) - p_right * entropy(right_y)
+
+def find_best_split(X, y):
+    best_gain = 0
+    best_attribute = None
+    best_threshold = None
+    for attribute in range(X.shape[1]):
+        thresholds = np.unique(X[:, attribute])
+        for threshold in thresholds:
+            gain = information_gain(X, y, attribute, threshold)
+            if gain > best_gain:
+                best_gain = gain
+                best_attribute = attribute
+                best_threshold = threshold
+    return best_attribute, best_threshold
+
+def build_tree(X, y):
+    if len(np.unique(y)) == 1:
+        return Node(value=y[0])
+
+    best_attribute, best_threshold = find_best_split(X, y)
+    if best_threshold is None:
+        return Node(value=np.argmax(np.bincount(y)))
+
+    left_indices = X[:, best_attribute] < best_threshold
+    left_X, left_y = X[left_indices], y[left_indices]
+    right_X, right_y = X[~left_indices], y[~left_indices]
+    left_node = build_tree(left_X, left_y)
+    right_node = build_tree(right_X, right_y)
+    return Node(attribute=best_attribute, threshold=best_threshold, left=left_node, right=right_node)
+
+def predict_sample(x, tree):
+    if tree.value is not None:
+        return tree.value
+    if x[tree.attribute] < tree.threshold:
+        return predict_sample(x, tree.left)
+    else:
+        return predict_sample(x, tree.right)
+
+def predict(X, tree):
+    return [predict_sample(x, tree) for x in X]
 
 def main():
-    st.title("Decision Tree Classifier")
-    st.write("This app demonstrates the working of a Decision Tree Classifier using the ID3 algorithm.")
+    st.title("ID3 Decision Tree Classifier")
+    st.sidebar.title("Upload CSV")
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
 
-    # Load data
-    df, target_names = load_data()
+    if uploaded_file is not None:
+        data = np.genfromtxt(uploaded_file, delimiter=',', skip_header=1)
+        X = data[:, :-1]
+        y = data[:, -1]  
 
-    # Display dataset
-    st.subheader("Dataset")
-    st.write(df)
-
-    # Train model
-    model, X_test, y_test = train_model(df)
-
-    # Evaluate model
-    st.subheader("Model Evaluation")
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    st.write("Accuracy:", accuracy)
-    st.write("Classification Report:")
-    st.write(classification_report(y_test, y_pred, target_names=target_names))
-
-    # Classification of new data
-    st.subheader("Classify New Data")
-    sepal_length = st.number_input("Enter sepal length:")
-    sepal_width = st.number_input("Enter sepal width:")
-    petal_length = st.number_input("Enter petal length:")
-    petal_width = st.number_input("Enter petal width:")
-    if st.button("Predict"):
-        new_data = [[sepal_length, sepal_width, petal_length, petal_width]]
-        prediction = model.predict(new_data)[0]
-        st.write("Predicted Class:", target_names[prediction])
+        tree = build_tree(X, y) 
+        st.write("Decision Tree Built.")
+        st.subheader("Make Predictions")
+        input_data = st.text_input("Enter input data (comma-separated values):")
+        if input_data:
+            input_values = np.array([float(x.strip()) for x in input_data.split(',')]).reshape(1, -1)
+            prediction = predict(input_values, tree)
+            st.write(f"Prediction: {prediction[0]}")
 
 if __name__ == "__main__":
     main()
-
