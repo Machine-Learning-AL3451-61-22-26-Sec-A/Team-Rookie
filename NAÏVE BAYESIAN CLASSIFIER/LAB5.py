@@ -1,56 +1,82 @@
 import pandas as pd
-from sklearn import tree
-from sklearn.preprocessing import LabelEncoder
-from sklearn.naive_bayes import GaussianNB
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 import streamlit as st
+import requests
+import zipfile
+import io
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn import metrics
 
-# Load data from CSV
-@st.cache
-def load_data():
-    return pd.read_csv('tennisdata.csv')
+# Title and introduction
+st.title("Naive Bayes Classifier for IMDb Review Classification")
+st.write("This app uses a Naive Bayes classifier to predict whether an IMDb review is positive or negative.")
 
-def main():
-    st.title("Tennis Play Prediction")
+# URL for the dataset
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00228/smsspamcollection.zip"
 
-    data = load_data()
-    st.subheader("Preview of the Data")
-    st.write(data.head())
+# Function to download and extract data
+@st.cache_data
+def download_and_extract_data(url):
+    response = requests.get(url)
+    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        z.extractall()
+        with open(z.namelist()[0], 'r') as file:
+            df = pd.read_csv(file, sep='\t', names=["sentiment", "text"])
+    return df
 
-    # Obtain Train data and Train output
-    X = data.iloc[:,:-1]
-    y = data.iloc[:,-1]
+# Download and extract the dataset
+df = download_and_extract_data(url)
 
-    # Convert them to numbers
-    le_outlook = LabelEncoder()
-    X.Outlook = le_outlook.fit_transform(X.Outlook)
+# Display the first five rows of the dataset
+st.subheader("First Five Rows of the Dataset")
+st.write(df.head())
 
-    le_Temperature = LabelEncoder()
-    X.Temperature = le_Temperature.fit_transform(X.Temperature)
+# Dataset information
+st.subheader("Dataset Information")
+buffer = io.StringIO()
+df.info(buf=buffer)
+s = buffer.getvalue()
+st.text(s)
 
-    le_Humidity = LabelEncoder()
-    X.Humidity = le_Humidity.fit_transform(X.Humidity)
+# Check for missing values
+st.subheader("Missing Values")
+st.write(df.isna().sum())
 
-    le_Windy = LabelEncoder()
-    X.Windy = le_Windy.fit_transform(X.Windy)
+# Map sentiment to numerical values
+df['snum'] = df.sentiment.map({'ham': 1, 'spam': 0})
 
-    le_PlayTennis = LabelEncoder()
-    y = le_PlayTennis.fit_transform(y)
+# Split the dataset into features and target variable
+x = df['text']
+y = df['snum']
 
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)
+# Split the data into training and test sets
+xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.3, random_state=42)
 
-    # Train the model
-    classifier = GaussianNB()
-    classifier.fit(X_train, y_train)
+# Initialize the CountVectorizer
+cv = CountVectorizer()
+xtrain_dtm = cv.fit_transform(xtrain)
+xtest_dtm = cv.transform(xtest)
 
-    # Prediction and Evaluation
-    y_pred = classifier.predict(X_test)
-    accuracy = accuracy_score(y_pred, y_test)
-    
-    st.subheader("Model Evaluation")
-    st.write("Accuracy:", accuracy)
+# Initialize the MultinomialNB classifier
+clf = MultinomialNB().fit(xtrain_dtm, ytrain)
 
-if __name__ == "__main__":
-    main()
+# Predict the test set results
+predicted = clf.predict(xtest_dtm)
+
+# Display the confusion matrix
+st.subheader("Confusion Matrix")
+cm = metrics.confusion_matrix(ytest, predicted)
+st.write(cm)
+
+# Display the accuracy score
+st.subheader("Accuracy Score")
+accuracy = metrics.accuracy_score(ytest, predicted)
+st.write(f"Accuracy: {accuracy:.2f}")
+
+# Display precision and recall
+st.subheader("Precision and Recall")
+precision = metrics.precision_score(ytest, predicted, average='micro')
+recall = metrics.recall_score(ytest, predicted, average='micro')
+st.write(f"Precision: {precision:.2f}")
+st.write(f"Recall: {recall:.2f}")
