@@ -27,7 +27,7 @@ def learn(concepts, target):
     return specific_h, general_h
 
 def main():
-    st.title("Candidate Elimination Algorithm")
+    st.title("22AIA-TEAM ROOKIE-Candidate Elimination Algorithm")
 
     # Section to get input from the user
     st.header("Input Data")
