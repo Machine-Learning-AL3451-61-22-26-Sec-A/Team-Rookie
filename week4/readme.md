@@ -65,5 +65,5 @@ This Streamlit web application provides a user-friendly interface for credit car
 
 ## Links:
 - [Streamlit App](https://week4rookie.streamlit.app/)
-- [Medium Article](https://medium.com/@vikramkaruppannan6807/naive-bayesian-classifier-3dab356a5e58)
+- [Medium Article](https://medium.com/@kishore_22aia56/implementation-of-naive-bayes-classifier-d57cec2a4099)
 
