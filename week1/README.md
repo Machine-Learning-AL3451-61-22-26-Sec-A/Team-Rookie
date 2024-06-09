@@ -39,5 +39,5 @@ The script performs the following tasks:
 
 ## Links:
 
-- [Streamlit Demo](https://infosquad0.streamlit.app/)
+- [Streamlit Demo](https://adk111213.streamlit.app/)
 - [Medium Article](https://medium.com/@vaishnavisathiyamoorthy/candidate-elimination-algorithm-4c05b344fdac)
