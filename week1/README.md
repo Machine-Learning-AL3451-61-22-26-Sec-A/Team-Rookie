@@ -40,4 +40,4 @@ The script performs the following tasks:
 ## Links:
 
 - [Streamlit Demo](https://adk111213.streamlit.app/)
-- [Medium Article](https://medium.com/@vaishnavisathiyamoorthy/candidate-elimination-algorithm-4c05b344fdac)
+- [Medium Article](https://medium.com/@aakashkumar_22aia01/candidate-elimination-alogrithm-f30c75813c61)
